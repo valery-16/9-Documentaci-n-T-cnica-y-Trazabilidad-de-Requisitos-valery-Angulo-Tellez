@@ -28,6 +28,28 @@ function generarAleatoria() {
   };
 }
 
+/**
+ * Valida una jugada de Baloto (5 números de 1 a 43 sin repetir + 1 superbalota
+ * de 1 a 16) o genera una jugada aleatoria cuando se solicita.
+ *
+ * @param {Object|null} jugada - Jugada enviada por el cliente.
+ * @param {boolean} [jugada.aleatoria] - Si es `true`, ignora los demás campos
+ *        y devuelve una jugada generada aleatoriamente ("Balotazo").
+ * @param {number[]} jugada.numeros - Exactamente 5 enteros entre 1 y 43, sin repetir.
+ * @param {number} jugada.superbalota - Entero entre 1 y 16.
+ * @returns {{numeros: number[], superbalota: number}} Jugada con los números
+ *          ordenados de forma ascendente.
+ * @throws {AppError} 400 si la cantidad, el rango, los duplicados o la
+ *          superbalota no cumplen las reglas.
+ *
+ * @example
+ * validarJugada({ aleatoria: true });
+ * // => { numeros: [3, 10, 21, 30, 43], superbalota: 7 } (valores de ejemplo)
+ *
+ * @example
+ * validarJugada({ numeros: [1, 2, 3, 4, 5], superbalota: 6 });
+ * // => { numeros: [1, 2, 3, 4, 5], superbalota: 6 }
+ */
 function validarJugada(jugada) {
   if (jugada && jugada.aleatoria === true) return generarAleatoria();
 
@@ -47,6 +69,25 @@ function validarJugada(jugada) {
   return { numeros: [...numeros].sort((a, b) => a - b), superbalota };
 }
 
+/**
+ * Calcula el premio de una jugada de Baloto según la cantidad de números
+ * acertados y si la superbalota coincide con la del resultado.
+ *
+ * Tabla de premios (`PREMIOS`, clave `"<aciertos>+<superbalota>"`):
+ * `5+1` paga el ACUMULADO del sorteo; `5+0` → 50.000.000; `4+1` → 2.000.000;
+ * `4+0` → 150.000; `3+1` → 40.000; `3+0` → 12.000; `2+1` → 9.000;
+ * `1+1` y `0+1` → 5.700 (devuelve la apuesta). Cualquier otra combinación paga 0.
+ *
+ * @param {{numeros: number[], superbalota: number}} jugada - Jugada validada.
+ * @param {{numeros: number[], superbalota: number}} resultado - Resultado oficial del sorteo.
+ * @param {number} [acumulado=0] - Acumulado vigente del sorteo (se paga solo en `5+1`).
+ * @returns {number} Premio en COP (0 si la jugada no gana nada).
+ *
+ * @example
+ * const resultado = { numeros: [3, 10, 21, 30, 43], superbalota: 7 };
+ * calcularPremio({ numeros: [3, 10, 21, 30, 1], superbalota: 7 }, resultado);
+ * // => 2000000  (4 aciertos + superbalota)
+ */
 function calcularPremio(jugada, resultado, acumulado = 0) {
   const aciertos = jugada.numeros.filter((n) => resultado.numeros.includes(n)).length;
   const sb = jugada.superbalota === resultado.superbalota ? 1 : 0;

@@ -17,6 +17,33 @@ function guardar(ticket) {
   return ticket;
 }
 
+/**
+ * Vende un tiquete de chance para un sorteo abierto de tipo `CHANCE`.
+ *
+ * Validaciones aplicadas:
+ * - El sorteo debe existir, ser de tipo `CHANCE` y estar `ABIERTO`
+ *   (las ventas cierran `MINUTOS_CIERRE_VENTAS` antes del sorteo).
+ * - El tiquete debe contener entre 1 y 5 apuestas, cada una validada con
+ *   {@link module:services/chanceService.validarApuesta}.
+ *
+ * El tiquete se persiste en el almacén en memoria con código único con
+ * prefijo `CH-` y estado inicial `ACTIVO`.
+ *
+ * @param {{id: number, rol: string}} vendedor - Usuario autenticado que realiza la venta.
+ * @param {Object} datos - Cuerpo de la solicitud.
+ * @param {number} datos.sorteoId - Identificador del sorteo objetivo.
+ * @param {Array<{numero: string, modalidad?: string, valor: number}>} datos.apuestas
+ *        Entre 1 y 5 apuestas de chance.
+ * @param {string} [datos.cliente] - Nombre opcional del cliente.
+ * @returns {Object} Tiquete creado (`codigo`, `total`, `estado`, `apuestas`...).
+ * @throws {AppError} 400 si el formato o los valores de las apuestas son inválidos.
+ * @throws {AppError} 404 si el sorteo no existe.
+ * @throws {AppError} 409 si el sorteo no está abierto o las ventas ya cerraron.
+ *
+ * @example
+ * venderChance(vendedor, { sorteoId: 1, apuestas: [{ numero: '1234', valor: 2000 }] });
+ * // => { codigo: 'CH-A1B2C3D4', tipo: 'CHANCE', total: 2000, estado: 'ACTIVO', ... }
+ */
 function venderChance(vendedor, { sorteoId, apuestas, cliente }) {
   const sorteo = sorteos.obtener(sorteoId);
   sorteos.verificarVentaPermitida(sorteo, 'CHANCE');
@@ -88,6 +115,29 @@ function consultar(codigo) {
   };
 }
 
+/**
+ * Anula un tiquete dejándolo en estado `ANULADO` y registrando el motivo.
+ *
+ * Reglas de anulación (todas deben cumplirse):
+ * - El tiquete debe existir.
+ * - Solo puede anular el vendedor que lo vendió o un usuario `ADMIN`.
+ * - El tiquete debe estar en estado `ACTIVO` (no `ANULADO`, `PAGADO` ni `CADUCADO`).
+ * - El sorteo asociado no debe haberse jugado.
+ * - Si el usuario no es `ADMIN`, la anulación solo procede dentro de los
+ *   `MINUTOS_ANULACION` posteriores a la venta.
+ * - Debe indicarse un motivo.
+ *
+ * @param {string} codigo - Código único del tiquete (p. ej. `CH-A1B2C3D4`).
+ * @param {{id: number, rol: 'ADMIN'|'VENDEDOR'}} usuario - Usuario autenticado.
+ * @param {string} motivo - Razón de la anulación (se guarda en el historial).
+ * @returns {Object} Tiquete actualizado con `estado: 'ANULADO'` y el objeto
+ *          `anulacion: { usuarioId, motivo, fecha }`.
+ * @throws {AppError} 404 si el tiquete no existe.
+ * @throws {AppError} 403 si el tiquete pertenece a otro vendedor.
+ * @throws {AppError} 409 si el estado no lo permite, el sorteo ya se jugó
+ *          o la anulación está fuera del plazo permitido.
+ * @throws {AppError} 400 si no se indica el motivo.
+ */
 function anular(codigo, usuario, motivo) {
   const ticket = buscar(codigo);
 

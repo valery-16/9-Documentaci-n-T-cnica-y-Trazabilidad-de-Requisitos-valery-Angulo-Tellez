@@ -4,6 +4,27 @@ const { getDb } = require('../data/store');
 const { jwtSecret, jwtExpiresIn } = require('../config');
 const AppError = require('../utils/AppError');
 
+/**
+ * Autentica a un usuario contra el almacén de datos y genera un token JWT
+ * firmado con el rol y el identificador del usuario.
+ *
+ * Flujo de validación:
+ * 1. Verifica que lleguen usuario y contraseña.
+ * 2. Compara la contraseña contra el hash bcrypt almacenado.
+ * 3. Verifica que la cuenta esté activa.
+ *
+ * @param {string} usuario - Nombre de usuario del operario (p. ej. `vendedor1`).
+ * @param {string} password - Contraseña en texto plano enviada por el cliente.
+ * @returns {{token: string, usuario: {id: number, usuario: string, nombre: string, rol: string}}}
+ *          Token JWT firmado y el perfil público (sin datos sensibles).
+ * @throws {AppError} 400 si falta el usuario o la contraseña.
+ * @throws {AppError} 401 si las credenciales no coinciden.
+ * @throws {AppError} 403 si la cuenta está inactiva.
+ *
+ * @example
+ * const { token, usuario } = login('vendedor1', 'vende123');
+ * // => { token: 'eyJhbGciOi...', usuario: { rol: 'VENDEDOR', ... } }
+ */
 function login(usuario, password) {
   if (!usuario || !password) throw new AppError('Usuario y contraseña son obligatorios');
 

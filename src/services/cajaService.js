@@ -28,6 +28,32 @@ function resumen(vendedorId, fecha = fechaLocal()) {
   };
 }
 
+/**
+ * Realiza el cierre de caja del día para un vendedor y determina si la caja
+ * quedó cuadrada, con sobrante o con faltante.
+ *
+ * Flujo:
+ * 1. Valida que `efectivoReportado` sea un entero positivo.
+ * 2. Calcula el resumen del día (usa la fecha local del servidor si no se
+ *    indica otra).
+ * 3. Impide un segundo cierre para la misma caja/fecha (409).
+ * 4. Compara el efectivo reportado contra el `saldoEsperado`
+ *    (`totalVendido − totalPagado`) y registra el `cierre` con su `diferencia`
+ *    y `estado` resultante: `CUADRADA`, `SOBRANTE` o `FALTANTE`.
+ *
+ * @param {number} vendedorId - Identificador del vendedor dueño de la caja.
+ * @param {Object} datos - Datos del cierre.
+ * @param {number} datos.efectivoReportado - Efectivo contado por el vendedor (COP).
+ * @param {string} [datos.fecha] - Fecha del cierre en formato `YYYY-MM-DD`
+ *        (por defecto, la fecha local actual).
+ * @returns {Object} Registro de cierre (`diferencia`, `estado`, resumen del día).
+ * @throws {AppError} 400 si el efectivo reportado no es un entero positivo.
+ * @throws {AppError} 409 si la caja de ese día ya fue cerrada.
+ *
+ * @example
+ * cerrar(2, { efectivoReportado: 10700 });
+ * // => { vendedorId: 2, saldoEsperado: 10700, diferencia: 0, estado: 'CUADRADA', ... }
+ */
 function cerrar(vendedorId, { efectivoReportado, fecha = fechaLocal() }) {
   if (!Number.isInteger(efectivoReportado) || efectivoReportado < 0) {
     throw new AppError('El efectivo reportado debe ser un entero positivo');
